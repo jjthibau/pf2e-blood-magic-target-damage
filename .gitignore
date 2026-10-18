@@ -1,0 +1,21 @@
+# Publish only the module and public documentation/tooling.
+/*
+!/.gitignore
+!/.gitattributes
+!/.github/
+!/README.md
+!/LICENSE
+!/CHANGELOG.md
+!/CONTRIBUTING.md
+!/SECURITY.md
+!/module.json
+!/package.json
+!/scripts/
+/scripts/*
+!/scripts/main.js
+!/docs/
+!/tools/
+**/__pycache__/
+**/*.pyc
+**/.DS_Store
+**/Thumbs.db

@@ -1,0 +1,20 @@
+name: Feature or bloodline support
+description: Suggest an improvement or additional bloodline support.
+title: "[Request]: "
+body:
+  - type: textarea
+    id: request
+    attributes:
+      label: What should change?
+      description: Describe the table workflow and why the existing controls do not cover it.
+    validations:
+      required: true
+  - type: textarea
+    id: spell
+    attributes:
+      label: Bloodline or spell details, if applicable
+      description: Include bloodline, PF2e version, a rule reference link and expected damage/benefit behavior. Do not paste full copyrighted descriptions.
+  - type: textarea
+    id: alternative
+    attributes:
+      label: Current workaround or proposed behavior

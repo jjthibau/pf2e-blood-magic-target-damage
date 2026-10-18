@@ -1,0 +1,15 @@
+{
+  "name": "pf2e-blood-magic-target-damage",
+  "version": "0.3.0",
+  "private": true,
+  "type": "module",
+  "license": "MIT",
+  "description": "Merge sorcerer Blood Magic damage into one target's native PF2e spell damage.",
+  "repository": {"type": "git", "url": "https://github.com/jjthibau/pf2e-blood-magic-target-damage.git"},
+  "engines": {"node": ">=22"},
+  "scripts": {
+    "test": "node --check scripts/main.js",
+    "build": "python tools/build_release.py",
+    "check:release": "python tools/check_release.py"
+  }
+}

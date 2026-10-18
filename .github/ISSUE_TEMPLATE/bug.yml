@@ -1,0 +1,44 @@
+name: Bug report
+description: Report a reproducible problem with bloodline selection or damage application.
+title: "[Bug]: "
+body:
+  - type: input
+    id: versions
+    attributes:
+      label: Versions
+      description: Foundry VTT, PF2e system, and Blood Magic Target Damage versions.
+      placeholder: Foundry14.369 / PF2e8.6.0 / module0.3.0
+    validations:
+      required: true
+  - type: input
+    id: spell
+    attributes:
+      label: Bloodline, spell and rank
+      description: Include elemental choice, legacy/remastered status and the selected Blood Magic benefit.
+    validations:
+      required: true
+  - type: textarea
+    id: reproduction
+    attributes:
+      label: Steps to reproduce
+      description: Include caster/GM perspective, caster targets, damage recipients, multiplier and the bonus-before-multipliers setting.
+    validations:
+      required: true
+  - type: textarea
+    id: behavior
+    attributes:
+      label: Expected and actual behavior
+    validations:
+      required: true
+  - type: textarea
+    id: other_modules
+    attributes:
+      label: Other modules and minimal-world result
+      description: Can you reproduce with only Blood Magic Target Damage enabled? Attach only sanitized logs/screenshots.
+  - type: checkboxes
+    id: privacy
+    attributes:
+      label: Before submitting
+      options:
+        - label: I removed credentials, private player information, and campaign exports from this report.
+          required: true
