@@ -70,7 +70,7 @@ Hooks.once("ready", () => {
   Hooks.on("renderActorSheetV2", renderBloodMagicChoice);
   Hooks.on("preCreateChatMessage", snapshotChoice);
   game.modules.get(MODULE_ID).api = {
-    mergeBloodMagicDamage, selectedBenefits,
+    mergeBloodMagicDamage, selectedBenefits, benefitChoicesV1,
     // Compatibility for existing macros and the original Phoenix test suite.
     mergePhoenixDamage: (roll, rank) => mergeBloodMagicDamage(roll, rank, "fire")
   };
@@ -111,6 +111,66 @@ function preferenceKey(key) {
   // Retain existing Phoenix preferences without migrating campaign documents.
   return key === "phoenix" ? "mode" : `modes.${key}`;
 }
+
+// Additive owned-choice contract. Native damage and cast snapshots stay unchanged.
+const benefitChoiceWrites = new WeakMap();
+const choiceActorUuid = actor => {
+  try {
+    const uuid = actor?.uuid;
+    return typeof uuid === "string" && /^(?:Actor\.[A-Za-z0-9_-]{1,64}|Scene\.[A-Za-z0-9_-]{1,64}\.Token\.[A-Za-z0-9_-]{1,64}\.Actor\.[A-Za-z0-9_-]{1,64})$/.test(uuid) ? uuid : null;
+  } catch { return null; }
+};
+function choiceActorAvailable(actor) {
+  return game.system.id === "pf2e" && game.system.version === "8.6.0" && game.release.generation === 14
+    && game.modules.get(MODULE_ID)?.active === true && choiceActorUuid(actor)
+    && actor.documentName === "Actor" && actor.isOwner === true
+    && actor.testUserPermission(game.user, "OWNER") && fromUuidSync(actor.uuid) === actor;
+}
+function offeredBenefitChoices(actor) {
+  return selectedBenefits(actor).map(benefit => {
+    const profile = BLOODLINES[benefit.key];
+    const options = [{value: "damage", label: "Damage"}, {value: profile.alternateMode ?? "other", label: profile.alternative}];
+    return {key: benefit.key, label: profile.label, mode: options.some(option => option.value === benefit.mode) ? benefit.mode : null, options};
+  });
+}
+function readBenefitChoices(actor) {
+  try {
+    if (!choiceActorAvailable(actor)) return {apiVersion: 1, status: "unavailable", code: "ACTOR_UNAVAILABLE", choices: []};
+    return {apiVersion: 1, status: "available", actorUuid: choiceActorUuid(actor), choices: offeredBenefitChoices(actor)};
+  } catch {
+    return {apiVersion: 1, status: "unavailable", code: "NATIVE_READ_FAILED", choices: []};
+  }
+}
+async function setBenefitChoice(actor, key, mode) {
+  const originUuid = choiceActorUuid(actor);
+  const receipt = (status, code) => ({apiVersion: 1, status, ...(code ? {code} : {}), actorUuid: originUuid});
+  let user, userId, uuid, writes;
+  try {
+    if (game.socket?.connected !== true) return receipt("cancelled", "DISCONNECTED");
+    if (!choiceActorAvailable(actor)) return receipt("cancelled", "ACTOR_UNAVAILABLE");
+    const offered = offeredBenefitChoices(actor).find(choice => choice.key === key);
+    if (!offered || !offered.options.some(option => option.value === mode)) return receipt("cancelled", "CHOICE_UNAVAILABLE");
+    writes = benefitChoiceWrites.get(actor) ?? new Set();
+    if (writes.has(key)) return receipt("cancelled", "BUSY");
+    user = game.user; userId = user.id; uuid = actor.uuid;
+    writes.add(key); benefitChoiceWrites.set(actor, writes);
+  } catch {
+    return receipt("cancelled", "PREFLIGHT_FAILED");
+  }
+  try {
+    await actor.setFlag(MODULE_ID, preferenceKey(key), mode);
+    if (game.socket?.connected !== true || game.user !== user || game.user.id !== userId || actor.uuid !== uuid || !choiceActorAvailable(actor)
+        || !offeredBenefitChoices(actor).some(choice => choice.key === key && choice.mode === mode)
+        || actor.getFlag(MODULE_ID, preferenceKey(key)) !== mode) return receipt("unknown", "CONTEXT_CHANGED_DURING_WRITE");
+    return {apiVersion: 1, status: "completed", actorUuid: uuid, key, mode, commitObserved: true};
+  } catch {
+    return receipt("unknown", "NATIVE_WRITE_UNCERTAIN");
+  } finally {
+    writes.delete(key);
+    if (!writes.size) benefitChoiceWrites.delete(actor);
+  }
+}
+const benefitChoicesV1 = Object.freeze({apiVersion: 1, read: readBenefitChoices, set: setBenefitChoice});
 
 function legacySpellList(item) {
   return item?.system.rules?.find(rule => rule.key === "ActiveEffectLike"
@@ -259,7 +319,19 @@ function renderBloodMagicChoice(sheet, html) {
     select.disabled = !actor.isOwner;
     select.addEventListener("change", async (event) => {
       event.stopPropagation();
-      await actor.setFlag(MODULE_ID, preferenceKey(benefit.key), select.value);
+      const mode = select.value;
+      select.disabled = true;
+      try {
+        const result = await benefitChoicesV1.set(actor, benefit.key, mode);
+        if (result.status === "unknown") ui.notifications.warn("Blood Magic choice could not be confirmed. Review the character before trying again.");
+        else if (result.status !== "completed") ui.notifications.warn("That Blood Magic choice is no longer available. Reopen the character sheet.");
+      } finally {
+        if (select.isConnected) {
+          const current = benefitChoicesV1.read(actor).choices.find(choice => choice.key === benefit.key);
+          select.value = current?.mode ?? "";
+          select.disabled = !current;
+        }
+      }
     });
     label.append(select);
   }
