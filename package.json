@@ -8,7 +8,7 @@
   "repository": {"type": "git", "url": "https://github.com/jjthibau/pf2e-blood-magic-target-damage.git"},
   "engines": {"node": ">=22"},
   "scripts": {
-    "test": "node --check scripts/main.js",
+    "test": "node --check scripts/main.js && node --test tools/test_benefit_api.mjs",
     "build": "python tools/build_release.py",
     "check:release": "python tools/check_release.py"
   }
