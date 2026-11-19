@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.3.1
+
+- Omit Psychopomp damage for constructs and let the damage applier verify a spell attack hit before adding Blood Magic. Include the mobile benefit-choice API.
+
 ## 0.3.0
 
 - First public packaged release; gameplay code matches the previously playtested0.3.0 module.

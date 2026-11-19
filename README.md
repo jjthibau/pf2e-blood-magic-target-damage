@@ -17,7 +17,7 @@ Version **0.3.0** generalizes the merged-damage workflow to the six PF2e 8.6.0 b
 | Undead | Void | Temp HP |
 | Aesir | Electricity | +2 Reflex saves |
 | Elemental | Native selected element's damage type | +2 Intimidation |
-| Psychopomp | Void against living targets; vitality against undead | +2 Fortitude saves |
+| Psychopomp | Void against living targets or vitality against undead. Constructs receive no Psychopomp bonus. | +2 Fortitude saves |
 
 Elemental reads the native ChoiceSet's stored damage type: air slashing, earth/water/wood bludgeoning, fire fire, metal piercing. No guessing from spell names or English descriptions. Unknown or unresolved profiles produce no automatic bonus. Nondamage bloodlines and delayed retaliation such as Hag use PF2e's existing effects.
 
@@ -48,6 +48,8 @@ The direct URL works before official directory approval. Existing0.3.0 users kee
 5. Only the designated scene token receives the spell-rank bonus. It is merged with matching initial damage before IWR, shield hardness and HP. Native Undo reverses the combined application.
 
 Zero/multiple targets, a target outside the selected recipients, healing, failed spell attacks, non-bloodline spells, and alternate-benefit cards receive no bonus. The module preserves evaluated dice, other recipients, native contextual actors, shift adjustments, main chat/popouts, shield HP and native Undo.
+
+PF2e creates spell attack and damage cards separately. The damage card's outcome alone cannot establish whether the attack hit. When applying its damage to the eligible target, check the attack card and choose whether to include Blood Magic, apply the base damage, or cancel.
 
 New cards snapshot selected benefits, damage types, rank and casting user. Choices are independent per bloodline, and changing a choice later does not change old cards. Phoenix cards from 0.2.x and the original Phoenix preference flag remain supported without migrating campaign data.
 

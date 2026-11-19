@@ -49,6 +49,11 @@ Hooks.once("ready", () => {
     if (context && params.token?.uuid === context.targetUuid && params.item?.uuid === context.itemUuid
         && !params.skipIWR && !params.final && (context.beforeMultiplier || context.multiplier >= 1)
         && !["failure", "criticalFailure"].includes(context.attackOutcome)) {
+      if (context.attackOutcome === "unverified") {
+        const decision = await confirmSpellHit();
+        if (decision === "base") return originalApplyDamage.call(this, params);
+        if (decision !== "hit") return;
+      }
       // Rebuild from the original evaluated roll before altering it so native
       // rounding, shift adjustments, and per-type damage stay intact.
       let merged = context.beforeMultiplier ? context.sourceRoll : params.damage;
@@ -101,6 +106,19 @@ function installAction(actions) {
   };
   wrappedActions.add(wrapped);
   actions.applyDamage = wrapped;
+}
+
+function confirmSpellHit() {
+  return foundry.applications.api.DialogV2.wait({
+    window: {title: "Confirm spell attack for Blood Magic"},
+    content: "<p>Check the spell attack card for this target. Include Blood Magic only if the attack hit.</p>",
+    buttons: [
+      {action: "base", label: "Apply base damage", callback: () => "base"},
+      {action: "hit", label: "Attack hit · include Blood Magic", callback: () => "hit"},
+      {action: "cancel", label: "Cancel", default: true, callback: () => null},
+    ],
+    close: () => null, rejectClose: false,
+  });
 }
 
 function bloodlineItem(actor, key) {
@@ -247,18 +265,22 @@ function resolveContext(message) {
   if (!target?.actor || target.parent?.id !== canvas.scene?.id) return null;
   const resolvedBenefits = benefits.map(b => ({
     label: BLOODLINES[b.key].label,
-    damageType: b.damageType === "target-life" ? (target.actor.modeOfBeing === "undead" ? "vitality" : "void") : b.damageType
-  })).filter(b => b.damageType in CONFIG.PF2E.damageTypes);
+    damageType: b.damageType === "target-life"
+      ? ({living: "void", undead: "vitality"})[target.actor.modeOfBeing] : b.damageType
+  })).filter(b => b.damageType && b.damageType in CONFIG.PF2E.damageTypes);
   if (!resolvedBenefits.length) return null;
   const options = message.flags.pf2e?.context?.options ?? [];
-  const isAttack = message.item.system.traits.value.includes("attack") || options.includes("item:trait:attack");
+  const rollContext = message.flags.pf2e?.context;
+  const isAttack = rollContext?.sourceType === "attack" || message.item.system.traits.value.includes("attack") || options.includes("item:trait:attack");
+  const outcome = rollContext?.outcome;
   return {
     targetUuid: target.uuid,
     itemUuid: message.item.uuid,
     rank,
     benefits: resolvedBenefits,
     beforeMultiplier: game.settings.get(MODULE_ID, "beforeMultiplier"),
-    attackOutcome: isAttack ? message.flags.pf2e?.context?.outcome : null
+    // PF2e's damage card says success even if the separately rolled attack missed.
+    attackOutcome: isAttack ? (["failure", "criticalFailure"].includes(outcome) ? outcome : "unverified") : null
   };
 }
 
